@@ -1,0 +1,32 @@
+{
+  "name": "sekolahpintar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SekolahPintar — Aplikasi Manajemen Sekolah dengan Dual-Mode Input",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "cd apps/api && npm run start:dev",
+    "dev:web": "cd apps/web && npm run dev",
+    "dev:mobile": "cd apps/mobile && npx expo start",
+    "db:generate": "cd packages/db && npx prisma generate",
+    "db:migrate": "cd packages/db && npx prisma migrate dev",
+    "db:seed": "cd packages/db && npx prisma db seed",
+    "db:studio": "cd packages/db && npx prisma studio",
+    "build:api": "cd apps/api && npm run build",
+    "build:web": "cd apps/web && npm run build",
+    "lint": "echo 'lint not configured yet'",
+    "typecheck": "echo 'typecheck not configured yet'",
+    "test": "cd apps/api && npm test",
+    "test:coverage": "cd apps/api && npm run test:coverage"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

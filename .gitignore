@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.log
+uploads/
+.turbo/
+.expo/
+*.xlsx
+*.xls
+scratch/

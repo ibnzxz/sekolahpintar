@@ -1,0 +1,657 @@
+// Prisma Schema for SekolahPintar
+// School Management System — MVP
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ══════════════════════════════════════════
+// SCHOOL & ACADEMIC STRUCTURE
+// ══════════════════════════════════════════
+
+model School {
+  id        String   @id @default(uuid())
+  npsn      String?  @unique /// Nomor Pokok Sekolah Nasional (Dapodik)
+  name      String
+  address   String?
+  phone     String?
+  email     String?
+  status    SchoolStatus @default(SWASTA)
+  level     SchoolLevel  @default(SMP)
+  province  String?
+  city      String?
+  district  String?
+  settings  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  academicYears AcademicYear[]
+  classes       Class[]
+  teachers      Teacher[]
+  students      Student[]
+  subjects      Subject[]
+  gradeCategories GradeCategory[]
+  scheduleEvents  ScheduleEvent[]
+  teacherGroups   TeacherGroup[]
+  activityLogs    ActivityLog[]
+
+  @@map("schools")
+}
+
+enum SchoolStatus {
+  NEGERI
+  SWASTA
+}
+
+enum SchoolLevel {
+  SD
+  SMP
+  SMA
+  SMK
+}
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  schoolId  String
+  name      String   /// e.g., "2025/2026"
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  school    School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  semesters Semester[]
+  classes   Class[]
+
+  @@map("academic_years")
+}
+
+model Semester {
+  id             String   @id @default(uuid())
+  academicYearId String
+  name           String   /// "Ganjil" / "Genap"
+  semesterNum    Int      /// 1 or 2
+  startDate      DateTime
+  endDate        DateTime
+  isActive       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  gradeEntries GradeEntry[]
+
+  @@map("semesters")
+}
+
+// ══════════════════════════════════════════
+// PEOPLE: TEACHERS & STUDENTS
+// ══════════════════════════════════════════
+
+model Teacher {
+  id           String   @id @default(uuid())
+  schoolId     String
+  nuptk        String?  @unique /// Nomor Unik Pendidik & Tenaga Kependidikan (Dapodik)
+  nip          String?  /// PNS ID (for negeri schools)
+  fullName     String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         TeacherRole @default(GURU)
+  gender       Gender?
+  birthDate    DateTime?
+  birthPlace   String?
+  address      String?
+  photoUrl     String?
+  preferences  Json?
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  school         School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classSubjects  ClassSubject[]
+  homeroomClasses Class[]        @relation("HomeroomTeacher")
+  grades         Grade[]
+  attendances    Attendance[]
+  materials      Material[]
+  assignments    Assignment[]
+  quizzes        Quiz[]
+  activityLogs   ActivityLog[]
+  inputTemplates InputTemplate[]
+  createdGroups  TeacherGroup[]  @relation("GroupCreator")
+  groupMembers   TeacherGroupMember[]
+  groupMessages  GroupMessage[]
+  scheduleEvents ScheduleEvent[]
+
+  @@map("teachers")
+}
+
+enum TeacherRole {
+  GURU
+  ADMIN
+  KEPALA_SEKOLAH
+  SUPER_ADMIN
+}
+
+enum Gender {
+  L
+  P
+}
+
+model Student {
+  id             String   @id @default(uuid())
+  schoolId       String
+  nisn           String?  @unique /// Nomor Induk Siswa Nasional (Dapodik)
+  nis            String?  /// Nomor Induk Siswa (internal)
+  nik            String?  /// NIK KTP
+  fullName       String
+  nickname       String?  /// Nama panggilan (for voice matching)
+  gender         Gender?
+  birthDate      DateTime?
+  birthPlace     String?
+  religion       String?
+  address        String?
+  photoUrl       String?
+  // Data Orang Tua (Dapodik-compatible)
+  fatherName     String?
+  fatherPhone    String?
+  fatherJob      String?
+  motherName     String?
+  motherPhone    String?
+  motherJob      String?
+  guardianName   String?
+  guardianPhone  String?
+  guardianRelation String?
+  isActive       Boolean  @default(true)
+  entryYear      Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classStudents  ClassStudent[]
+  grades         Grade[]
+  attendances    Attendance[]
+  assignmentSubmissions AssignmentSubmission[]
+  quizAttempts   QuizAttempt[]
+
+  @@map("students")
+}
+
+// ══════════════════════════════════════════
+// CLASSES, SUBJECTS & ASSIGNMENTS
+// ══════════════════════════════════════════
+
+model Subject {
+  id          String  @id @default(uuid())
+  schoolId    String
+  name        String  /// e.g., "Matematika"
+  code        String? /// e.g., "MTK"
+  description String?
+  createdAt   DateTime @default(now())
+
+  school        School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classSubjects ClassSubject[]
+
+  @@map("subjects")
+}
+
+model Class {
+  id               String   @id @default(uuid())
+  schoolId         String
+  academicYearId   String
+  name             String   /// e.g., "7A", "9C"
+  gradeLevel       Int?     /// 1-12
+  homeroomTeacherId String?
+  maxStudents      Int      @default(36)
+  createdAt        DateTime @default(now())
+
+  school           School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear     AcademicYear @relation(fields: [academicYearId], references: [id])
+  homeroomTeacher  Teacher?     @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
+  classStudents    ClassStudent[]
+  classSubjects    ClassSubject[]
+  attendances      Attendance[]
+  activityLogs     ActivityLog[]
+
+  @@map("classes")
+}
+
+model ClassStudent {
+  id         String   @id @default(uuid())
+  classId    String
+  studentId  String
+  enrolledAt DateTime @default(now())
+
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+  @@index([studentId])
+  @@index([classId])
+  @@map("class_students")
+}
+
+model ClassSubject {
+  id              String   @id @default(uuid())
+  classId         String
+  subjectId       String
+  teacherId       String
+  scheduleDay     Int?     /// 1=Senin, 7=Minggu
+  scheduleTime    String?  /// "07:30"
+  scheduleEndTime String?  /// "09:00"
+  createdAt       DateTime @default(now())
+
+  class       Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject     Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher     Teacher     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  gradeEntries GradeEntry[]
+  materials    Material[]
+  assignments  Assignment[]
+  quizzes      Quiz[]
+
+  @@unique([classId, subjectId])
+  @@index([teacherId])
+  @@index([subjectId])
+  @@map("class_subjects")
+}
+
+// ══════════════════════════════════════════
+// GRADES (NILAI)
+// ══════════════════════════════════════════
+
+model GradeCategory {
+  id        String   @id @default(uuid())
+  schoolId  String
+  name      String   /// "Ulangan Harian", "UTS", "UAS", "Tugas"
+  weight    Float    @default(1.0)
+  createdAt DateTime @default(now())
+
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  gradeEntries GradeEntry[]
+
+  @@map("grade_categories")
+}
+
+model GradeEntry {
+  id             String   @id @default(uuid())
+  classSubjectId String
+  categoryId     String?
+  semesterId     String
+  title          String?  /// "UH 1", "UTS Semester 1"
+  maxScore       Float    @default(100)
+  date           DateTime?
+  createdAt      DateTime @default(now())
+
+  classSubject ClassSubject   @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  category     GradeCategory? @relation(fields: [categoryId], references: [id])
+  semester     Semester       @relation(fields: [semesterId], references: [id])
+  grades       Grade[]
+  quizzes      Quiz[]
+
+  @@index([classSubjectId, semesterId])
+  @@index([semesterId])
+  @@map("grade_entries")
+}
+
+model Grade {
+  id           String   @id @default(uuid())
+  gradeEntryId String
+  studentId    String
+  score        Float?
+  notes        String?
+  inputMethod  InputMethod @default(MANUAL)
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  gradeEntry GradeEntry @relation(fields: [gradeEntryId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdBy  Teacher    @relation(fields: [createdById], references: [id])
+
+  @@unique([gradeEntryId, studentId])
+  @@index([studentId])
+  @@index([createdById])
+  @@map("grades")
+}
+
+enum InputMethod {
+  VOICE
+  MANUAL
+  QUIZ
+  SYSTEM
+}
+
+// ══════════════════════════════════════════
+// ATTENDANCE (ABSENSI)
+// ══════════════════════════════════════════
+
+model Attendance {
+  id          String   @id @default(uuid())
+  classId     String
+  studentId   String
+  date        DateTime
+  status      AttendanceStatus @default(HADIR)
+  notes       String?
+  inputMethod InputMethod @default(MANUAL)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdBy Teacher @relation(fields: [createdById], references: [id])
+
+  @@unique([classId, studentId, date])
+  @@index([studentId])
+  @@index([date])
+  @@map("attendances")
+}
+
+enum AttendanceStatus {
+  HADIR
+  IZIN
+  SAKIT
+  ALPA
+}
+
+// ══════════════════════════════════════════
+// MATERIALS & ASSIGNMENTS (BANK MATERI & TUGAS)
+// ══════════════════════════════════════════
+
+model Material {
+  id             String   @id @default(uuid())
+  classSubjectId String
+  teacherId      String
+  title          String
+  description    String?
+  fileUrl        String?
+  fileType       String?  /// 'pdf', 'pptx', 'mp4', 'jpg', etc.
+  fileSize       BigInt?  /// bytes
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  classSubject ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  teacher      Teacher      @relation(fields: [teacherId], references: [id])
+
+  @@map("materials")
+}
+
+model Assignment {
+  id             String    @id @default(uuid())
+  classSubjectId String
+  teacherId      String
+  title          String
+  description    String?
+  attachmentUrl  String?
+  dueDate        DateTime?
+  inputMethod    InputMethod @default(MANUAL)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  classSubject ClassSubject           @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  teacher      Teacher                @relation(fields: [teacherId], references: [id])
+  submissions  AssignmentSubmission[]
+
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id           String    @id @default(uuid())
+  assignmentId String
+  studentId    String
+  fileUrl      String?
+  notes        String?
+  score        Float?
+  submittedAt  DateTime  @default(now())
+  gradedAt     DateTime?
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@map("assignment_submissions")
+}
+
+// ══════════════════════════════════════════
+// QUIZ & BANK SOAL
+// ══════════════════════════════════════════
+
+model Quiz {
+  id               String    @id @default(uuid())
+  classSubjectId   String?
+  teacherId        String
+  title            String
+  description      String?
+  quizType         QuizType  @default(LATIHAN)
+  timeLimitMins    Int?      /// null = no limit
+  isPublished      Boolean   @default(false)
+  shuffleQuestions Boolean   @default(false)
+  gradeEntryId     String?   /// link to grade if ulangan
+  startTime        DateTime?
+  endTime          DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  classSubject ClassSubject? @relation(fields: [classSubjectId], references: [id], onDelete: SetNull)
+  teacher      Teacher       @relation(fields: [teacherId], references: [id])
+  gradeEntry   GradeEntry?   @relation(fields: [gradeEntryId], references: [id])
+  questions    QuizQuestion[]
+  attempts     QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+enum QuizType {
+  LATIHAN
+  ULANGAN
+}
+
+model QuizQuestion {
+  id            String       @id @default(uuid())
+  quizId        String
+  questionText  String
+  questionType  QuestionType @default(PILIHAN_GANDA)
+  options       Json?        /// ["A. ...", "B. ...", "C. ...", "D. ..."]
+  correctAnswer String
+  points        Float        @default(1.0)
+  sortOrder     Int          @default(0)
+  imageUrl      String?
+  createdAt     DateTime     @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_questions")
+}
+
+enum QuestionType {
+  PILIHAN_GANDA
+  ISIAN_SINGKAT
+}
+
+model QuizAttempt {
+  id          String    @id @default(uuid())
+  quizId      String
+  studentId   String
+  score       Float?
+  totalPoints Float?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  answers     Json?     /// [{questionId, answer, isCorrect}]
+
+  quiz    Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_attempts")
+}
+
+// ══════════════════════════════════════════
+// TEACHER SCHEDULE / CALENDAR
+// ══════════════════════════════════════════
+
+model ScheduleEvent {
+  id             String    @id @default(uuid())
+  schoolId       String
+  teacherId      String?   /// null = school-wide event
+  title          String
+  description    String?
+  eventType      EventType @default(LAINNYA)
+  startTime      DateTime
+  endTime        DateTime?
+  isRecurring    Boolean   @default(false)
+  recurrenceRule String?   /// iCal RRULE format
+  classSubjectId String?
+  createdAt      DateTime  @default(now())
+
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher Teacher? @relation(fields: [teacherId], references: [id])
+
+  @@map("schedule_events")
+}
+
+enum EventType {
+  MENGAJAR
+  ULANGAN
+  RAPAT
+  DEADLINE
+  LAINNYA
+}
+
+// ══════════════════════════════════════════
+// TEACHER COLLABORATION / GROUP CHAT
+// ══════════════════════════════════════════
+
+model TeacherGroup {
+  id          String    @id @default(uuid())
+  schoolId    String
+  name        String
+  description String?
+  groupType   GroupType  @default(UMUM)
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  school    School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdBy Teacher              @relation("GroupCreator", fields: [createdById], references: [id])
+  members   TeacherGroupMember[]
+  messages  GroupMessage[]
+
+  @@map("teacher_groups")
+}
+
+enum GroupType {
+  MATA_PELAJARAN
+  JENJANG
+  UMUM
+}
+
+model TeacherGroupMember {
+  id        String     @id @default(uuid())
+  groupId   String
+  teacherId String
+  role      MemberRole @default(MEMBER)
+  joinedAt  DateTime   @default(now())
+
+  group   TeacherGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  teacher Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, teacherId])
+  @@map("teacher_group_members")
+}
+
+enum MemberRole {
+  ADMIN
+  MEMBER
+}
+
+model GroupMessage {
+  id          String      @id @default(uuid())
+  groupId     String
+  senderId    String
+  content     String
+  messageType MessageType @default(TEXT)
+  fileUrl     String?
+  isPinned    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+
+  group  TeacherGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sender Teacher      @relation(fields: [senderId], references: [id])
+
+  @@map("group_messages")
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  ANNOUNCEMENT
+}
+
+// ══════════════════════════════════════════
+// TEMPLATES (INPUT SHORTCUTS)
+// ══════════════════════════════════════════
+
+model InputTemplate {
+  id           String       @id @default(uuid())
+  teacherId    String
+  name         String
+  templateType TemplateType
+  templateData Json         /// Stores the template structure
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@map("input_templates")
+}
+
+enum TemplateType {
+  NILAI
+  TUGAS
+  PENGUMUMAN
+}
+
+// ══════════════════════════════════════════
+// ACTIVITY LOG (CHAT HISTORY / AUDIT TRAIL)
+// ══════════════════════════════════════════
+
+model ActivityLog {
+  id            String      @id @default(uuid())
+  schoolId      String
+  teacherId     String
+  classId       String?
+  actionType    ActionType
+  inputMethod   InputMethod @default(MANUAL)
+  summary       String      /// Human-readable summary for chat bubble
+  detailData    Json?       /// Full data payload for reference
+  referenceType String?     /// 'grade', 'attendance', 'material', etc.
+  referenceId   String?     /// ID of the referenced record
+  isUndone      Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher Teacher  @relation(fields: [teacherId], references: [id])
+  class   Class?   @relation(fields: [classId], references: [id])
+
+  @@index([classId, createdAt(sort: Desc)])
+  @@index([teacherId, createdAt(sort: Desc)])
+  @@index([schoolId, createdAt(sort: Desc)])
+  @@index([referenceType, referenceId])
+  @@index([actionType])
+  @@map("activity_logs")
+}
+
+enum ActionType {
+  INPUT_NILAI
+  INPUT_ABSENSI
+  UPLOAD_MATERI
+  BUAT_TUGAS
+  BUAT_KUIS
+  EDIT_NILAI
+  EDIT_ABSENSI
+  HAPUS_NILAI
+  HAPUS_ABSENSI
+  UNDO
+}

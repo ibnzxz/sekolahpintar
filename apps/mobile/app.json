@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "SekolahPintar",
+    "slug": "sekolahpintar",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "sekolahpintar",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#075E54"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sekolahpintar.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#075E54"
+      },
+      "package": "com.sekolahpintar.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Izinkan SekolahPintar mengakses mikrofon untuk input suara."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
