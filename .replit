@@ -1,0 +1,7 @@
+run = "cd apps/api && npm run start:dev"
+
+[nix]
+channel = "stable-24_05"
+
+[env]
+NODE_ENV = "development"
