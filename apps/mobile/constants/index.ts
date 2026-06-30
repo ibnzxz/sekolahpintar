@@ -2,9 +2,8 @@
 // SekolahPintar — App Constants
 // ═══════════════════════════════════════════════════
 
-export const API_BASE_URL = __DEV__
-  ? 'http://localhost:3000/api'
-  : 'https://api.sekolahpintar.id/api';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL
+  || (__DEV__ ? 'http://localhost:3000/api' : 'https://api.sekolahpintar.id/api');
 
 export const APP_NAME = 'SekolahPintar';
 export const APP_VERSION = '0.1.0';

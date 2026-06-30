@@ -17,10 +17,12 @@
     "db:studio": "cd packages/db && npx prisma studio",
     "build:api": "cd apps/api && npm run build",
     "build:web": "cd apps/web && npm run build",
+    "start": "cd apps/api && node dist/main",
     "lint": "echo 'lint not configured yet'",
     "typecheck": "echo 'typecheck not configured yet'",
     "test": "cd apps/api && npm test",
-    "test:coverage": "cd apps/api && npm run test:coverage"
+    "test:coverage": "cd apps/api && npm run test:coverage",
+    "postinstall": "cd packages/db && npx prisma generate"
   },
   "engines": {
     "node": ">=18.0.0"
