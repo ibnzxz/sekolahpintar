@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class MaterialsService {
@@ -92,7 +94,12 @@ export class MaterialsService {
 
     await this.prisma.material.delete({ where: { id } });
 
-    // Mark log as undone
+    // Hapus file fisik
+    if (material.fileUrl) {
+      const filePath = path.resolve(__dirname, '..', '..', '..', material.fileUrl.replace(/^\//, ''));
+      try { fs.unlinkSync(filePath); } catch {}
+    }
+
     await this.prisma.activityLog.updateMany({
       where: { referenceType: 'material', referenceId: id },
       data: { isUndone: true },

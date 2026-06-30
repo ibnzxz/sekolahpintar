@@ -4,12 +4,13 @@ dotenv.config({ path: path.resolve(__dirname, '..', '..', '..', '.env') });
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Security headers
   app.use(helmet());
@@ -35,6 +36,10 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Serve uploaded files statically
+  const uploadDir = process.env.UPLOAD_DIR || path.resolve(__dirname, '..', 'uploads');
+  app.useStaticAssets(uploadDir, { prefix: '/uploads' });
 
   // Global exception filter
   app.useGlobalFilters(new HttpExceptionFilter());
