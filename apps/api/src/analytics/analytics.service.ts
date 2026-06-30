@@ -1,11 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+const cache = new Map<string, { data: any; expiry: number }>();
+const CACHE_TTL = 60_000; // 1 menit
+
+function getCached(key: string): any | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() < entry.expiry) return entry.data;
+  cache.delete(key);
+  return null;
+}
+
+function setCache(key: string, data: any) {
+  cache.set(key, { data, expiry: Date.now() + CACHE_TTL });
+}
+
 @Injectable()
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
   async getTeacherAnalytics(teacherId: string) {
+    const cached = getCached(`analytics:${teacherId}`);
+    if (cached) return cached;
     const classSubjects = await this.prisma.classSubject.findMany({
       where: { teacherId },
       include: {
@@ -116,7 +132,7 @@ export class AnalyticsService {
       }
     }
 
-    return {
+    const result = {
       totalStudents,
       totalClasses,
       averageGrade: Math.round(averageGrade * 10) / 10,
@@ -124,5 +140,9 @@ export class AnalyticsService {
       classStats,
       studentsAtRisk: studentsAtRisk.slice(0, 10),
     };
+
+    setCache(`analytics:${teacherId}`, result);
+
+    return result;
   }
 }
